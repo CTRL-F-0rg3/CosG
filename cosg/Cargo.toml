@@ -1,6 +1,21 @@
 [package]
 name = "cosg"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+
+[[example]]
+name = "example"
+path = "example/example.rs"
 
 [dependencies]
+wgpu = "22"
+winit = { version = "0.30", features = ["rwh_06"] }
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.3"
+glyphon = "0.7"
+log = "0.4"
+env_logger = "0.11"
+
+[lib]
+name = "cosg"
+path = "src/lib.rs"
