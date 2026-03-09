@@ -1,7 +1,7 @@
 use crate::{
     esc::Esc,
     theme::Theme,
-    widget::{DrawRect, Rect, Widget, WidgetEvent},
+    widget::{DrawRect, Rect, TextCmd, Widget, WidgetEvent},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -17,47 +17,45 @@ pub struct Button {
 
 impl Button {
     pub fn new() -> Self {
-        Self {
-            label:    String::new(),
-            esc:      Esc::default(),
-            rect:     Rect::default(),
-            state:    BtnState::Idle,
-            on_press: None,
-        }
+        Self { label: String::new(), esc: Esc::default(), rect: Rect::default(),
+               state: BtnState::Idle, on_press: None }
     }
-
     pub fn label(mut self, s: impl Into<String>) -> Self { self.label = s.into(); self }
     pub fn esc(mut self, e: Esc) -> Self { self.esc = e; self }
-
     pub fn on_press<F: Fn() + 'static>(mut self, f: F) -> Self {
-        self.on_press = Some(Box::new(f));
-        self
+        self.on_press = Some(Box::new(f)); self
     }
-
-    pub fn text(&self) -> &str { &self.label }
 }
 
 impl Widget for Button {
-    fn layout(&mut self, bounds: Rect, _theme: &Theme) {
-        self.rect = bounds;
-    }
+    fn layout(&mut self, bounds: Rect, _theme: &Theme) { self.rect = bounds; }
 
     fn draw(&self, theme: &Theme) -> Vec<DrawRect> {
-        let color = match self.state {
+        let mut color = match self.state {
             BtnState::Idle    => theme.primary,
             BtnState::Hovered => theme.primary_hover,
             BtnState::Pressed => theme.primary_press,
         };
-
-        let mut color = color;
         color[3] *= self.esc.opacity;
-
         vec![DrawRect {
-            rect:         self.rect,
+            rect:          self.rect,
             color,
             border_radius: self.esc.border_radius,
             border_width:  self.esc.border_width,
             border_color:  self.esc.border_color.unwrap_or(theme.border),
+        }]
+    }
+
+    fn draw_text(&self, theme: &Theme) -> Vec<TextCmd> {
+        if self.label.is_empty() { return vec![]; }
+        // Wyśrodkuj tekst pionowo w przycisku
+        let font_size = theme.font_size;
+        vec![TextCmd {
+            text:      self.label.clone(),
+            x:         self.rect.x + 12.0,
+            y:         self.rect.y + (self.rect.h - font_size) * 0.5,
+            font_size,
+            color:     theme.text,
         }]
     }
 
@@ -81,6 +79,7 @@ impl Widget for Button {
                     self.state = BtnState::Idle;
                 }
             }
+            WidgetEvent::KeyInput { .. } => {}
         }
     }
 

@@ -1,36 +1,28 @@
 use crate::{
     esc::Esc,
     theme::Theme,
-    widget::{DrawRect, Rect, Widget, WidgetEvent},
+    widget::{DrawRect, Rect, TextCmd, Widget, WidgetEvent},
 };
 
-struct Cell {
-    col:    usize,
-    row:    usize,
-    widget: Box<dyn Widget>,
-}
+struct Cell { col: usize, row: usize, widget: Box<dyn Widget> }
 
 pub struct Grid {
-    cols:    usize,
-    rows:    usize,
-    cells:   Vec<Cell>,
-    gap:     f32,
-    esc:     Esc,
-    rect:    Rect,
+    cols:  usize,
+    rows:  usize,
+    cells: Vec<Cell>,
+    gap:   f32,
+    esc:   Esc,
+    rect:  Rect,
 }
 
 impl Grid {
     pub fn new(cols: usize, rows: usize) -> Self {
         Self { cols, rows, cells: vec![], gap: 8.0, esc: Esc::default(), rect: Rect::default() }
     }
-
     pub fn gap(mut self, g: f32) -> Self { self.gap = g; self }
     pub fn esc(mut self, e: Esc) -> Self { self.esc = e; self }
-
-    /// Umieść widget w komórce (col, row)
     pub fn place(mut self, widget: impl Widget + 'static, col: usize, row: usize) -> Self {
-        self.cells.push(Cell { col, row, widget: Box::new(widget) });
-        self
+        self.cells.push(Cell { col, row, widget: Box::new(widget) }); self
     }
 }
 
@@ -54,16 +46,16 @@ impl Widget for Grid {
             border_width:  self.esc.border_width,
             border_color:  self.esc.border_color.unwrap_or(theme.border),
         }];
-        for cell in &self.cells {
-            out.extend(cell.widget.draw(theme));
-        }
+        for cell in &self.cells { out.extend(cell.widget.draw(theme)); }
         out
     }
 
+    fn draw_text(&self, theme: &Theme) -> Vec<TextCmd> {
+        self.cells.iter().flat_map(|c| c.widget.draw_text(theme)).collect()
+    }
+
     fn handle_event(&mut self, event: &WidgetEvent) {
-        for cell in &mut self.cells {
-            cell.widget.handle_event(event);
-        }
+        for cell in &mut self.cells { cell.widget.handle_event(event); }
     }
 
     fn rect(&self) -> Rect { self.rect }

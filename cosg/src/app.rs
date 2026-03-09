@@ -42,20 +42,18 @@ struct State {
 
 impl State {
     async fn new(window: std::sync::Arc<Window>, theme: Theme, root: Box<dyn Widget>) -> Self {
-        let size = window.inner_size();
+        let size     = window.inner_size();
         let instance = wgpu::Instance::default();
-        let surface = instance.create_surface(window.clone()).unwrap();
-        let adapter = instance
+        let surface  = instance.create_surface(window.clone()).unwrap();
+        let adapter  = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 compatible_surface: Some(&surface),
                 ..Default::default()
             })
-            .await
-            .unwrap();
+            .await.unwrap();
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor::default(), None)
-            .await
-            .unwrap();
+            .await.unwrap();
 
         let caps   = surface.get_capabilities(&adapter);
         let format = caps.formats[0];
@@ -71,7 +69,8 @@ impl State {
         };
         surface.configure(&device, &cfg);
 
-        let renderer = Renderer::new(&device, format, (size.width, size.height));
+        // Renderer teraz potrzebuje też queue (dla glyphon atlas)
+        let renderer = Renderer::new(&device, &queue, format, (size.width, size.height));
 
         let mut root = root;
         root.layout(
@@ -93,23 +92,30 @@ impl State {
         );
     }
 
-    fn render(&self) {
-        let frame   = self.surface.get_current_texture().unwrap();
-        let view    = frame.texture.create_view(&Default::default());
+    fn render(&mut self) {
+        let frame = self.surface.get_current_texture().unwrap();
+        let view  = frame.texture.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());
-        let rects   = self.root.draw(&self.theme);
-        self.renderer.render(&self.device, &self.queue, &mut enc, &view, &rects, self.theme.bg);
+
+        let rects     = self.root.draw(&self.theme);
+        let text_cmds = self.root.draw_text(&self.theme);
+
+        self.renderer.render(
+            &self.device, &self.queue, &mut enc, &view,
+            &rects, &text_cmds, self.theme.bg,
+        );
+
         self.queue.submit(std::iter::once(enc.finish()));
         frame.present();
     }
 }
 
-// ─── ApplicationHandler ───────────────────────────────────────────────────────
+// ── ApplicationHandler ────────────────────────────────────────────────────────
 
 pub struct App {
-    config:      AppConfig,
-    root_fn:     Box<dyn FnOnce() -> Box<dyn Widget>>,
-    state:       Option<State>,
+    config:   AppConfig,
+    root_fn:  Box<dyn FnOnce() -> Box<dyn Widget>>,
+    state:    Option<State>,
 }
 
 impl App {
@@ -127,10 +133,11 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
             .with_title(&self.config.title)
-            .with_inner_size(winit::dpi::PhysicalSize::new(self.config.width, self.config.height));
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                self.config.width, self.config.height,
+            ));
         let window = std::sync::Arc::new(el.create_window(attrs).unwrap());
 
-        // Dummy root żeby zastąpić root_fn (FnOnce nie może być wywołane dwukrotnie)
         let root_fn = std::mem::replace(&mut self.root_fn, Box::new(|| {
             Box::new(crate::widgets::Container::new()) as Box<dyn Widget>
         }));

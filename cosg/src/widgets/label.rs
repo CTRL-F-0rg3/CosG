@@ -1,7 +1,7 @@
 use crate::{
     esc::Esc,
     theme::Theme,
-    widget::{DrawRect, Rect, Widget, WidgetEvent},
+    widget::{DrawRect, Rect, TextCmd, Widget, WidgetEvent},
 };
 
 pub struct Label {
@@ -26,11 +26,16 @@ impl Label {
 impl Widget for Label {
     fn layout(&mut self, bounds: Rect, _theme: &Theme) { self.rect = bounds; }
 
-    fn draw(&self, theme: &Theme) -> Vec<DrawRect> {
-        // Label nie rysuje tła — tylko tekst (glyphon obsługuje to osobno)
-        // Zwracamy pusty vec; renderer zapyta o text() i font_size() osobno
-        let _ = theme;
-        vec![]
+    fn draw(&self, _theme: &Theme) -> Vec<DrawRect> { vec![] }
+
+    fn draw_text(&self, theme: &Theme) -> Vec<TextCmd> {
+        vec![TextCmd {
+            text:      self.text.clone(),
+            x:         self.rect.x,
+            y:         self.rect.y + self.font_size(theme) * 0.2, // małe wyrównanie baseline
+            font_size: self.font_size(theme),
+            color:     theme.text,
+        }]
     }
 
     fn handle_event(&mut self, _event: &WidgetEvent) {}
