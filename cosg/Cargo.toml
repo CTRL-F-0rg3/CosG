@@ -2,6 +2,8 @@
 name = "cosg"
 version = "0.1.0"
 edition = "2021"
+description = "A wgpu-based UI library with a dark violet theme"
+license = "MIT"
 
 [[example]]
 name = "example"
